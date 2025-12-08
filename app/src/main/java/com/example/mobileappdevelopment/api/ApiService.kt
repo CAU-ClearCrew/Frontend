@@ -12,47 +12,47 @@ import retrofit2.http.*
 
 interface ApiService {
     //로그인
-    @POST("auth/login")
+    @POST("api/auth/login")
     suspend fun login(
         @Body request: LoginRequest
     ): Response<LoginResponse>
 
     //새로운 사원 등록
-    @POST("employees")
+    @POST("api/employees")
     suspend fun createEmployee(
         @Body request: CreateEmployeeRequest
     ): Response<CreateEmployeeResponse>
 
     //사원 목록 불러오기
-    @GET("employees")
+    @GET("api/employees")
     suspend fun getEmployees(): Response<List<Employee>>
 
     //사원 업데이트
-    @PUT("employees/{id}")
+    @PATCH("api/employees/{id}")
     suspend fun updateEmployee(
         @Path("id") id: String,
         @Body request: UpdateEmployeeRequest
     ): Response<UpdateEmployeeResponse>
 
     //사원 상태 업데이트 (퇴사 처리)
-    @PATCH("employees/{id}/status")
+    @PATCH("api/employees/{id}/status")
     suspend fun updateEmployeeStatus(
         @Path("id") id: String,
         @Body request: StatusUpdateRequest
     ): Response<Unit>
 
     //사원 삭제
-    @DELETE("employees/{id}")
+    @DELETE("api/employees/{id}")
     suspend fun deleteEmployee(
         @Path("id") id: String
     ): Response<Unit>
 
     //신고내용 가져오기
-    @GET("reports")
+    @GET("api/report")
     suspend fun getReports(): Response<List<Report>>
 
     //신고 제출
-    @POST("reports")
+    @POST("api/report")
     suspend fun submitReport(
         @Body report: SubmitReportRequest
     ): Response<Report>
@@ -79,18 +79,18 @@ interface ApiService {
     ): Response<Report>
 
     // Merkle & ZK 관련
-    @GET("zk/public-key")
+    @GET("api/keys/public")
     suspend fun getPublicKey(): Response<PublicKeyResponse>
 
-    @POST("zk/register")
+    @POST("api/merkle/register")
     suspend fun registerMerkle(
         @Body request: MerkleRegisterRequest
     ): Response<MerkleRegisterResponse>
 
-    @GET("zk/merkle-tree")
+    @GET("api/merkle/tree-info")
     suspend fun getMerkleTreeInfo(): Response<MerkleTreeInfoResponse>
 
-    @POST("zk/report")
+    @POST("api/report")
     suspend fun submitZkReport(
         @Body request: ZkReportRequest
     ): Response<ZkReportResponse>

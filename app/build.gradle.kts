@@ -65,4 +65,17 @@ dependencies {
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+
+    // Fuel for Pinata IPFS
+    implementation("com.github.kittinunf.fuel:fuel:2.3.1")
+    implementation("com.github.kittinunf.fuel:fuel-gson:2.3.1")
+
+    // Tink for Encryption
+    implementation("com.google.crypto.tink:tink-android:1.11.0")
+
+    // Gson for JSON serialization
+    implementation("com.google.code.gson:gson:2.10.1")
+
+    // Noir Android
+    implementation("com.github.madztheo:noir_android:1.0.0-beta.14-3")
 }
