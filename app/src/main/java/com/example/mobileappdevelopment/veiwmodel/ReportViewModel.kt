@@ -46,7 +46,7 @@ class ReportViewModel : ViewModel() {
     }
 
     // submitReport()
-    /*fun submitReport(
+    fun submitReport(
         category: ReportCategory,
         title: String,
         description: String,
@@ -70,7 +70,7 @@ class ReportViewModel : ViewModel() {
                 // 에러 처리
             }
         }
-    }*/
+    }
 
     // updateReportStatus()
     fun updateReportStatus(reportId: String, status: ReportStatus) {

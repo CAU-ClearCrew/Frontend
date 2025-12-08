@@ -52,10 +52,10 @@ interface ApiService {
     suspend fun getReports(): Response<List<Report>>
 
     //신고 제출
-    /*@POST("reports")
+    @POST("reports")
     suspend fun submitReport(
         @Body report: SubmitReportRequest
-    ): Response<Report>*/
+    ): Response<Report>
 
     //신고 상태 업데이트
     @PATCH("reports/{id}/status")
