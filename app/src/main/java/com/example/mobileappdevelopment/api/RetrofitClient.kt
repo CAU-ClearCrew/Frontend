@@ -8,7 +8,7 @@ import java.util.concurrent.TimeUnit
 
 object RetrofitClient {
     // TODO: 실제 백엔드 URL로 변경
-    private const val BASE_URL = "https://api.yourcompany.com/"
+    private const val BASE_URL = "http://localhost:3000"
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BODY
