@@ -26,16 +26,26 @@ fun ZkSettingsScreen(viewModel: ZkViewModel = viewModel()) {
 
         OutlinedTextField(
             value = customNullifier,
-            onValueChange = { customNullifier = it },
+            onValueChange = { newValue ->
+                if (newValue.all { it.isDigit() || it in 'a'..'f' || it in 'A'..'F' }) {
+                    customNullifier = newValue
+                }
+            },
             label = { Text("익명 ID (Custom Nullifier)") },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("16진수 값을 입력하세요") }
         )
 
         OutlinedTextField(
             value = secret,
-            onValueChange = { secret = it },
+            onValueChange = { newValue ->
+                if (newValue.all { it.isDigit() || it in 'a'..'f' || it in 'A'..'F' }) {
+                    secret = newValue
+                }
+            },
             label = { Text("비밀 값 (Secret)") },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("16진수 값을 입력하세요") }
         )
 
         Button(

@@ -2,13 +2,13 @@ package com.example.mobileappdevelopment.api
 
 import com.example.mobileappdevelopment.data.Employee
 import com.example.mobileappdevelopment.data.Report
-import com.example.mobileappdevelopment.data.ReportCategory
-import com.example.mobileappdevelopment.data.ReportPriority
-import com.example.mobileappdevelopment.data.ReportStatus
-import com.example.mobileappdevelopment.data.User
-import com.example.mobileappdevelopment.data.UserRole
 import retrofit2.Response
-import retrofit2.http.*
+import retrofit2.http.Body
+import retrofit2.http.DELETE
+import retrofit2.http.GET
+import retrofit2.http.PATCH
+import retrofit2.http.POST
+import retrofit2.http.Path
 
 interface ApiService {
     //로그인
@@ -51,12 +51,6 @@ interface ApiService {
     @GET("api/report")
     suspend fun getReports(): Response<List<Report>>
 
-    //신고 제출
-    @POST("api/report")
-    suspend fun submitReport(
-        @Body report: SubmitReportRequest
-    ): Response<Report>
-
     //신고 상태 업데이트
     @PATCH("reports/{id}/status")
     suspend fun updateReportStatus(
@@ -88,12 +82,7 @@ interface ApiService {
     ): Response<MerkleRegisterResponse>
 
     @GET("api/merkle/tree-info")
-    suspend fun getMerkleTreeInfo(): Response<MerkleTreeInfoResponse>
-
-    @POST("api/report")
-    suspend fun submitZkReport(
-        @Body request: ZkReportRequest
-    ): Response<ZkReportResponse>
+    suspend fun getMerkleTreeInfo(): Response<CircuitInputsResponse>
 }
 
 // Request/Response 모델들
@@ -139,17 +128,10 @@ data class StatusUpdateRequest(
     val status: String // "ACTIVE" or "RESIGNED"
 )
 
-data class SubmitReportRequest(
-    val category: String,
-    val title: String,
-    val description: String,
-    val department: String,
-    val date: String
-)
-
 data class UpdateStatusRequest(val status: String)
 data class UpdatePriorityRequest(val priority: String)
 data class UpdateNotesRequest(val notes: String)
+
 
 // Merkle & ZK 모델들
 data class PublicKeyResponse(
@@ -166,33 +148,14 @@ data class MerkleRegisterResponse(
     val result: Any?
 )
 
-data class MerkleLeafData(
-    val userId: Int,
-    val leaf: String
-)
-
-data class MerkleTreeInfoResponse(
-    val root: String,
-    val leaves: List<MerkleLeafData>
-)
-
-data class ZkReportRequest(
-    val encryptedContent: String,
-    val zkProof: String,
-    val nullifierHash: String?,
-    val root: String?
-)
-
-data class ZkReportResponse(
-    val message: String,
-    val ipfsCid: String,
-    val txHash: String
-)
-
-data class ZkReport(
-    val id: Int,
-    val encryptedContent: String,
-    val ipfsCid: String,
-    val txHash: String,
-    val createdAt: String
+// ZK Circuit Inputs Response
+data class CircuitInputsResponse(
+    val item_key: String,
+    val item_nextIdx: String,
+    val item_nextKey: String,
+    val item_value: String,
+    val path_elements: List<String>,
+    val path_indices: List<String>,
+    val active_bits: List<String>,
+    val root: String
 )

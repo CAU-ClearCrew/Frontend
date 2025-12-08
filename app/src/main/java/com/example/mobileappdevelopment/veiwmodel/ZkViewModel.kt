@@ -6,10 +6,14 @@ import androidx.lifecycle.viewModelScope
 import com.example.mobileappdevelopment.api.MerkleRegisterRequest
 import com.example.mobileappdevelopment.api.RetrofitClient
 import com.example.mobileappdevelopment.util.ZkKeyManager
+import com.loopring.poseidon.PoseidonHash
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.math.BigInteger
 
 class ZkViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -19,8 +23,24 @@ class ZkViewModel(application: Application) : AndroidViewModel(application) {
     fun registerZkKeys(customNullifier: String, secret: String) {
         viewModelScope.launch {
             try {
-                // Hash the values (or prepare them as needed by the server)
-                val leaf = (customNullifier + secret) // Replace with actual hashing logic
+                val leaf = withContext(Dispatchers.Default) {
+                    try {
+                        val hasher: PoseidonHash = PoseidonHash.Digest.newInstance(PoseidonHash.DefaultParams)
+                        // The library is strict by default, so we disable it to prevent crashes if hex strings are not field elements.
+                        (hasher as PoseidonHash.Digest).setStrict(false)
+
+                        hasher.add(BigInteger(customNullifier, 16))
+                        hasher.add(BigInteger(secret, 16))
+                        
+                        // digest(false) returns BigInteger[] where the first element is the hash
+                        hasher.digest(false)[0].toString(16)
+                    } catch (e: NumberFormatException) {
+                        _registrationStatus.value = "입력 값은 16진수 문자(0-9, a-f)만 포함해야 합니다."
+                        null
+                    }
+                }
+
+                if (leaf == null) return@launch
 
                 val request = MerkleRegisterRequest(leaf)
                 val response = RetrofitClient.apiService.registerMerkle(request)
