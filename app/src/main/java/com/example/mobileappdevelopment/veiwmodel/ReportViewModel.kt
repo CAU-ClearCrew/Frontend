@@ -1,12 +1,16 @@
 package com.example.mobileappdevelopment.veiwmodel
 
 import android.app.Application
+import android.util.Base64
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.ma_front.R
 import com.example.mobileappdevelopment.api.RetrofitClient
 import com.example.mobileappdevelopment.api.UpdateNotesRequest
 import com.example.mobileappdevelopment.api.UpdatePriorityRequest
 import com.example.mobileappdevelopment.api.UpdateStatusRequest
+import com.example.mobileappdevelopment.blockchain.BlockchainService
 import com.example.mobileappdevelopment.data.Report
 import com.example.mobileappdevelopment.data.ReportCategory
 import com.example.mobileappdevelopment.data.ReportPriority
@@ -16,9 +20,8 @@ import com.github.kittinunf.fuel.Fuel
 import com.github.kittinunf.fuel.core.FileDataPart
 import com.github.kittinunf.fuel.core.Method
 import com.github.kittinunf.fuel.gson.responseObject
-import com.google.crypto.tink.Aead
-import com.google.crypto.tink.aead.AeadConfig
 import com.google.gson.Gson
+import com.loopring.poseidon.PoseidonHash
 import com.noirandroid.lib.Circuit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,7 +30,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.security.GeneralSecurityException
+import java.math.BigInteger
+import java.security.KeyFactory
+import java.security.spec.X509EncodedKeySpec
+import javax.crypto.Cipher
 
 class ReportViewModel(application: Application) : AndroidViewModel(application) {
     private val _reports = MutableStateFlow<List<Report>>(emptyList())
@@ -37,14 +43,27 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
     val filterStatus: StateFlow<ReportStatus?> = _filterStatus.asStateFlow()
 
     private val gson = Gson()
+    private val blockchainService = BlockchainService(application)
 
     init {
         loadReports()
-        try {
-            AeadConfig.register()
-        } catch (e: GeneralSecurityException) {
-            // Handle the exception
-        }
+    }
+
+    private suspend fun poseidon1(input: String): String = withContext(Dispatchers.Default) {
+        val hasher: PoseidonHash = PoseidonHash.Digest.newInstance(PoseidonHash.DefaultParams)
+        (hasher as PoseidonHash.Digest).setStrict(false)
+        hasher.add(BigInteger(input, 16))
+        val hashResult = hasher.digest(false)
+        hashResult[0].toString(16)
+    }
+
+    private suspend fun poseidon2(input1: String, input2: String): String = withContext(Dispatchers.Default) {
+        val hasher: PoseidonHash = PoseidonHash.Digest.newInstance(PoseidonHash.DefaultParams)
+        (hasher as PoseidonHash.Digest).setStrict(false)
+        hasher.add(BigInteger(input1, 16))
+        hasher.add(BigInteger(input2, 16))
+        val hashResult = hasher.digest(false)
+        hashResult[0].toString(16)
     }
 
     private fun loadCircuit(): Circuit {
@@ -99,21 +118,25 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
         _filterStatus.value = status
     }
 
-    private suspend fun encryptData(data: String, publicKey: String): ByteArray = withContext(Dispatchers.IO) {
-        val keysetHandle = com.google.crypto.tink.CleartextKeysetHandle.read(
-            com.google.crypto.tink.JsonKeysetReader.withString(publicKey)
-        )
-        val aead = keysetHandle.getPrimitive(Aead::class.java)
-        aead.encrypt(data.toByteArray(), null)
+    private suspend fun encryptData(data: String, publicKeyPem: String): ByteArray = withContext(Dispatchers.IO) {
+        val keyBytes = Base64.decode(publicKeyPem.replace("-----BEGIN PUBLIC KEY-----", "").replace("-----END PUBLIC KEY-----", "").replace("\n", ""), Base64.DEFAULT)
+        val keySpec = X509EncodedKeySpec(keyBytes)
+        val keyFactory = KeyFactory.getInstance("RSA")
+        val publicKey = keyFactory.generatePublic(keySpec)
+
+        val cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding")
+        cipher.init(Cipher.ENCRYPT_MODE, publicKey)
+        cipher.doFinal(data.toByteArray())
     }
 
     private suspend fun uploadToIpfs(data: ByteArray): String = withContext(Dispatchers.IO) {
         val tempFile = File.createTempFile("report", ".bin", getApplication<Application>().cacheDir)
         tempFile.writeBytes(data)
 
-        val response = Fuel.upload("/pinning/pinFileToIPFS", Method.POST)
+        val base = "https://api.pinata.cloud"
+        val response = Fuel.upload(base + "/pinning/pinFileToIPFS", Method.POST)
             .add(FileDataPart(tempFile, name = "file"))
-            .header("Authorization", "Bearer d35f9fdaa852c589d654")
+            .header("Authorization", "Bearer ${getApplication<Application>().getString(R.string.PINATA_JWT)}")
             .responseObject<IpfsResponse>(gson)
 
         tempFile.delete()
@@ -168,53 +191,44 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                 // 4. Upload to IPFS
                 val cid = uploadToIpfs(encryptedData)
 
-                // 5. Get Merkle Tree info
-                val merkleInfoResponse = RetrofitClient.apiService.getMerkleTreeInfo()
-                if (!merkleInfoResponse.isSuccessful) {
+                // 5. Get Merkle Tree info (Circuit Inputs)
+                val circuitInputsResponse = RetrofitClient.apiService.getMerkleTreeInfo()
+                if (!circuitInputsResponse.isSuccessful) {
                     // Handle error
                     return@launch
                 }
-                val merkleInfo = merkleInfoResponse.body()!!
+                val circuitInputs = circuitInputsResponse.body()!!
 
-                // For now, we will use dummy data for ZK proof generation
-                val itemKey = "0"
-                val itemNextIdx = "0"
-                val itemNextKey = "0"
-                val itemValue = "0"
-                val pathElements = List(8) { "0" }
-                val pathIndices = List(8) { "0" }
-                val activeBits = List(8) { "0" }
+                // 6. Calculate hashes required for the proof
+                val nullifierHash = poseidon1(customNullifier)
+                val itemValue = poseidon2(customNullifier, secret)
 
-                // 6. Generate ZK Proof
-                val proof = generateProof(
+                // 7. Generate ZK Proof using real data from the API
+                val proofString = generateProof(
                     customNullifier,
                     secret,
-                    itemKey,
-                    itemNextIdx,
-                    itemNextKey,
-                    itemValue,
-                    pathElements,
-                    pathIndices,
-                    activeBits,
-                    merkleInfo.root,
-                    "0" // dummy nullifier hash for now
+                    circuitInputs.item_key,
+                    circuitInputs.item_nextIdx,
+                    circuitInputs.item_nextKey,
+                    itemValue, // Use calculated itemValue
+                    circuitInputs.path_elements,
+                    circuitInputs.path_indices,
+                    circuitInputs.active_bits,
+                    circuitInputs.root,
+                    nullifierHash
                 )
 
-                // 7. Submit to the smart contract (or server)
-                val zkReportRequest = com.example.mobileappdevelopment.api.ZkReportRequest(
-                    encryptedContent = cid,
-                    zkProof = proof,
-                    nullifierHash = "0", // dummy nullifier hash
-                    root = merkleInfo.root
-                )
-                val zkReportResponse = RetrofitClient.apiService.submitZkReport(zkReportRequest)
+                // 8. Submit to the smart contract
+                val proofBytes = proofString.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
+                val rootBytes = circuitInputs.root.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
+                val txHash = blockchainService.submitWhistleblow(proofBytes, cid, rootBytes)
 
-                if (zkReportResponse.isSuccessful) {
+                if (txHash != null) {
                     loadReports()
                 }
 
-            } catch (e: Exception) {
-                // Handle error
+            } catch (t: Throwable) {
+                Log.e("ReportViewModel", "Failed to submit report", t)
             }
         }
     }
