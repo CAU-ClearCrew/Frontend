@@ -10,12 +10,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.mobileappdevelopment.api.TokenManager
-import com.example.mobileappdevelopment.navigation.MainScreen
-import com.example.mobileappdevelopment.ui.screen.LoginScreen
 import com.example.mobileappdevelopment.ui.theme.CompanyManagementTheme
-import com.example.mobileappdevelopment.veiwmodel.AuthViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -34,4 +30,3 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
-
