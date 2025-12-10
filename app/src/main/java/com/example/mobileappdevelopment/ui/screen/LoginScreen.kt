@@ -9,8 +9,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.mobileappdevelopment.data.UserRole
 
 @Composable
@@ -43,50 +46,74 @@ fun LoginScreen(
             )
 
             Text(
-                text = "회사 관리 시스템",
-                style = MaterialTheme.typography.headlineMedium
+                text = "Whistle Box",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                fontSize = 35.sp
             )
 
             Text(
-                text = "로그인하여 시스템에 접근하세요",
+                text = "Anonymous Whistleblowing System | 익명 신고 시스템",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            //Spacer(modifier = Modifier.height(20.dp))
+            Divider(modifier = Modifier.padding(8.dp))
 
-            Card(
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Login",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 22.sp
+                )
+
+                Text(
+                    text = "로그인 유형",
+                    style = MaterialTheme.typography.labelMedium,
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FilterChip(
+                        selected = selectedRole == UserRole.EMPLOYEE,
+                        onClick = { selectedRole = UserRole.EMPLOYEE },
+                        label = { Text(
+                            "사원",
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Center) },
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(horizontal = 8.dp),
+                    )
+                    FilterChip(
+                        selected = selectedRole == UserRole.ADMIN,
+                        onClick = { selectedRole = UserRole.ADMIN },
+                        label = { Text(
+                            "관리자",
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Center) },
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(horizontal = 8.dp)
+                    )
+                }
+            }
+            ElevatedCard(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(
-                        text = "로그인",
-                        style = MaterialTheme.typography.titleLarge
-                    )
 
-                    Text(
-                        text = "로그인 유형",
-                        style = MaterialTheme.typography.labelMedium
-                    )
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        FilterChip(
-                            selected = selectedRole == UserRole.EMPLOYEE,
-                            onClick = { selectedRole = UserRole.EMPLOYEE },
-                            label = { Text("사원") },
-                            modifier = Modifier.weight(1f)
-                        )
-                        FilterChip(
-                            selected = selectedRole == UserRole.ADMIN,
-                            onClick = { selectedRole = UserRole.ADMIN },
-                            label = { Text("관리자") },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
 
                     OutlinedTextField(
                         value = email,
@@ -130,7 +157,9 @@ fun LoginScreen(
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("로그인")
+                        Text(
+                            text = "로그인",
+                            fontWeight = FontWeight.Bold)
                     }
 
                     Card(
@@ -143,8 +172,9 @@ fun LoginScreen(
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             Text(
-                                text = "테스트 계정:",
-                                style = MaterialTheme.typography.labelMedium
+                                text = "테스트 계정",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold
                             )
                             Text(
                                 text = "관리자: admin@company.com / admin123",
@@ -156,6 +186,7 @@ fun LoginScreen(
                             )
                         }
                     }
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
             }
         }

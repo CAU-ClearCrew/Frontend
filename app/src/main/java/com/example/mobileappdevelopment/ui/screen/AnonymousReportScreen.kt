@@ -9,6 +9,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.mobileappdevelopment.data.ReportCategory
 import com.example.mobileappdevelopment.data.User
@@ -48,6 +50,7 @@ fun AnonymousReportScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Column(
+            modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
@@ -58,8 +61,9 @@ fun AnonymousReportScreen(
                 tint = MaterialTheme.colorScheme.primary
             )
             Text(
-                text = "익명 고발 시스템",
-                style = MaterialTheme.typography.headlineSmall
+                text = "Anonymous Report",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
             )
             Text(
                 text = "부당한 대우나 부정행위를 안전하게 신고할 수 있습니다",
@@ -129,15 +133,20 @@ fun AnonymousReportScreen(
                 }
             }
         } else {
+            Spacer(modifier = Modifier.padding(8.dp))
+            Text(
+                text = "신고서 작성",
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.fillMaxWidth(),
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
+            )
             Card {
                 Column(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Text(
-                        text = "신고서 작성",
-                        style = MaterialTheme.typography.titleLarge
-                    )
+
                     Text(
                         text = "가능한 자세히 작성해 주시면 더 신속한 처리가 가능합니다",
                         style = MaterialTheme.typography.bodySmall,

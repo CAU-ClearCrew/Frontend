@@ -9,6 +9,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.mobileappdevelopment.data.Report
 import com.example.mobileappdevelopment.data.ReportPriority
@@ -49,15 +50,21 @@ fun ReportManagementScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        Text(
+            text = "신고 현황",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier
+            .padding(4.dp)
+        )
         Card {
+
             Column(
                 modifier = Modifier.padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Text(
-                    text = "신고 현황",
-                    style = MaterialTheme.typography.titleLarge
-                )
+
                 Text(
                     text = "접수된 모든 익명 신고를 관리합니다",
                     style = MaterialTheme.typography.bodySmall,

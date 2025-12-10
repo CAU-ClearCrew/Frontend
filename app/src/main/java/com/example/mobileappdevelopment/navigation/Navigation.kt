@@ -7,6 +7,9 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -52,7 +55,11 @@ fun MainScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("회사 관리 시스템") },
+                title = { Text(
+                    text = "Whistle Box",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp,
+                    ) },
                 actions = {
                     IconButton(onClick = onLogout) {
                         Icon(Icons.Default.Logout, contentDescription = "로그아웃")

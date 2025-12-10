@@ -9,6 +9,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.example.mobileappdevelopment.data.Employee
@@ -56,13 +57,14 @@ fun EmployeeManagementScreen(
                     Column {
                         Text(
                             text = "사원 관리",
-                            style = MaterialTheme.typography.titleLarge
-                        )
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
+                        )/*
                         Text(
                             text = "회사 사원 정보를 관리합니다",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        )*/
                     }
 
                     Button(onClick = { showAddDialog = true }) {
