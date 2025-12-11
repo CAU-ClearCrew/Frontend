@@ -30,6 +30,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.FileOutputStream
 import java.math.BigInteger
 import java.security.KeyFactory
 import java.security.spec.X509EncodedKeySpec
@@ -67,18 +68,24 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun loadCircuit(): Circuit {
-        val json = getApplication<Application>().assets.open("zkClearCrew.json")
+        val application = getApplication<Application>()
+        val json = application.assets.open("zkClearCrew.json")
             .bufferedReader()
             .use { it.readText() }
 
         val circuit = Circuit.fromJsonManifest(json)
 
-        val srs = File(getApplication<Application>().filesDir, "srs")
-        if (srs.exists()) {
-            circuit.setupSrs(srs.path)
-        } else {
-            circuit.setupSrs()
+        // Copy SRS from assets to internal storage if it doesn't exist
+        val srsFile = File(application.filesDir, "srs")
+        if (!srsFile.exists()) {
+            application.assets.open("srs").use { input ->
+                FileOutputStream(srsFile).use { output ->
+                    input.copyTo(output)
+                }
+            }
         }
+
+        circuit.setupSrs(srsFile.path)
         return circuit
     }
 
@@ -132,11 +139,14 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
     private suspend fun uploadToIpfs(data: ByteArray): String = withContext(Dispatchers.IO) {
         val tempFile = File.createTempFile("report", ".bin", getApplication<Application>().cacheDir)
         tempFile.writeBytes(data)
+        
+        val pinataJwt = getApplication<Application>().getString(R.string.PINATA_JWT)
+        Log.d("PinataJWTCheck", "JWT: $pinataJwt")
 
         val base = "https://api.pinata.cloud"
         val response = Fuel.upload(base + "/pinning/pinFileToIPFS", Method.POST)
             .add(FileDataPart(tempFile, name = "file"))
-            .header("Authorization", "Bearer ${getApplication<Application>().getString(R.string.PINATA_JWT)}")
+            .header("Authorization", "Bearer $pinataJwt")
             .responseObject<IpfsResponse>(gson)
 
         tempFile.delete()

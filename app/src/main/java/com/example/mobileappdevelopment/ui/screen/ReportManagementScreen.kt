@@ -1,12 +1,38 @@
 package com.example.mobileappdevelopment.ui.screen
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -16,42 +42,29 @@ import com.example.mobileappdevelopment.data.ReportStatus
 import com.example.mobileappdevelopment.veiwmodel.ReportViewModel
 
 @Composable
-fun ReportManagementScreen(
-    viewModel: ReportViewModel
-) {
+fun ReportManagementScreen(viewModel: ReportViewModel) {
     val reports by viewModel.reports.collectAsState()
     val filterStatus by viewModel.filterStatus.collectAsState()
-
     var selectedReport by remember { mutableStateOf<Report?>(null) }
 
-    val filteredReports = remember(reports, filterStatus) {
-        if (filterStatus == null) {
-            reports
-        } else {
-            reports.filter { it.status == filterStatus }
-        }
+    val reportsByStatus = reports.groupBy { it.status }
+    val filteredReports = if (filterStatus == null) {
+        reports
+    } else {
+        reports.filter { it.status == filterStatus }
     }
 
-    val reportsByStatus = remember(reports) {
-        mapOf(
-            null to reports.size,
-            ReportStatus.PENDING to reports.count { it.status == ReportStatus.PENDING },
-            ReportStatus.INVESTIGATING to reports.count { it.status == ReportStatus.INVESTIGATING },
-            ReportStatus.RESOLVED to reports.count { it.status == ReportStatus.RESOLVED },
-            ReportStatus.CLOSED to reports.count { it.status == ReportStatus.CLOSED }
-        )
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Card {
+    Box(modifier = Modifier.fillMaxSize()) {
+        Card(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
+        ) {
             Column(
-                modifier = Modifier.padding(16.dp),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Text(
@@ -70,13 +83,13 @@ fun ReportManagementScreen(
                 ) {
                     StatusCard(
                         label = "전체",
-                        count = reportsByStatus[null] ?: 0,
+                        count = reports.size,
                         onClick = { viewModel.setFilterStatus(null) },
                         modifier = Modifier.weight(1f)
                     )
                     StatusCard(
                         label = "접수",
-                        count = reportsByStatus[ReportStatus.PENDING] ?: 0,
+                        count = reportsByStatus[ReportStatus.PENDING]?.size ?: 0,
                         onClick = { viewModel.setFilterStatus(ReportStatus.PENDING) },
                         modifier = Modifier.weight(1f)
                     )
@@ -88,19 +101,19 @@ fun ReportManagementScreen(
                 ) {
                     StatusCard(
                         label = "조사중",
-                        count = reportsByStatus[ReportStatus.INVESTIGATING] ?: 0,
+                        count = reportsByStatus[ReportStatus.INVESTIGATING]?.size ?: 0,
                         onClick = { viewModel.setFilterStatus(ReportStatus.INVESTIGATING) },
                         modifier = Modifier.weight(1f)
                     )
                     StatusCard(
                         label = "해결",
-                        count = reportsByStatus[ReportStatus.RESOLVED] ?: 0,
+                        count = reportsByStatus[ReportStatus.RESOLVED]?.size ?: 0,
                         onClick = { viewModel.setFilterStatus(ReportStatus.RESOLVED) },
                         modifier = Modifier.weight(1f)
                     )
                     StatusCard(
                         label = "종료",
-                        count = reportsByStatus[ReportStatus.CLOSED] ?: 0,
+                        count = reportsByStatus[ReportStatus.CLOSED]?.size ?: 0,
                         onClick = { viewModel.setFilterStatus(ReportStatus.CLOSED) },
                         modifier = Modifier.weight(1f)
                     )
@@ -138,9 +151,9 @@ fun ReportManagementScreen(
         ReportDetailDialog(
             report = report,
             onDismiss = { selectedReport = null },
-            onUpdateStatus = { status -> viewModel.updateReportStatus(report.id, status) },
-            onUpdatePriority = { priority -> viewModel.updateReportPriority(report.id, priority) },
-            onUpdateNotes = { notes -> viewModel.updateReportNotes(report.id, notes) }
+            onUpdateStatus = { status -> viewModel.updateReportStatus(report.id.toString(), status) },
+            onUpdatePriority = { priority -> viewModel.updateReportPriority(report.id.toString(), priority) },
+            onUpdateNotes = { notes -> viewModel.updateReportNotes(report.id.toString(), notes) }
         )
     }
 }
@@ -201,15 +214,15 @@ fun ReportCard(
             ) {
                 AssistChip(
                     onClick = {},
-                    label = { Text(report.status.label, style = MaterialTheme.typography.labelSmall) }
+                    label = { Text(report.status?.label ?: "상태 미지정", style = MaterialTheme.typography.labelSmall) }
                 )
                 AssistChip(
                     onClick = {},
-                    label = { Text(report.priority.label, style = MaterialTheme.typography.labelSmall) }
+                    label = { Text(report.priority?.label ?: "우선순위 미지정", style = MaterialTheme.typography.labelSmall) }
                 )
                 AssistChip(
                     onClick = {},
-                    label = { Text(report.category.label, style = MaterialTheme.typography.labelSmall) }
+                    label = { Text(report.category?.label ?: "유형 미지정", style = MaterialTheme.typography.labelSmall) }
                 )
             }
 
@@ -223,7 +236,7 @@ fun ReportCard(
             Row(
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                if (report.department.isNotBlank()) {
+                if (report.department?.isNotBlank() == true) {
                     Text(
                         text = report.department,
                         style = MaterialTheme.typography.bodySmall,
@@ -232,13 +245,13 @@ fun ReportCard(
                     Text("•", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Icon(
-                    Icons.Default.DateRange, //CalanderToday인가에서 바꿈.
+                    Icons.Default.DateRange,
                     contentDescription = null,
                     modifier = Modifier.size(14.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = report.date,
+                    text = report.date ?: "날짜 미지정",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -256,7 +269,7 @@ fun ReportDetailDialog(
     onUpdatePriority: (ReportPriority) -> Unit,
     onUpdateNotes: (String) -> Unit
 ) {
-    var notes by remember { mutableStateOf(report.notes) }
+    var notes by remember { mutableStateOf(report.notes ?: "") }
     var expandedStatus by remember { mutableStateOf(false) }
     var expandedPriority by remember { mutableStateOf(false) }
 
@@ -285,18 +298,18 @@ fun ReportDetailDialog(
                     Text("신고 유형", style = MaterialTheme.typography.labelMedium)
                     AssistChip(
                         onClick = {},
-                        label = { Text(report.category.label) }
+                        label = { Text(report.category?.label ?: "유형 미지정") }
                     )
                 }
 
-                if (report.department.isNotBlank()) {
+                if (report.department?.isNotBlank() == true) {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text("관련 부서", style = MaterialTheme.typography.labelMedium)
                         Text(report.department, style = MaterialTheme.typography.bodyMedium)
                     }
                 }
 
-                if (report.date.isNotBlank()) {
+                if (report.date?.isNotBlank() == true) {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text("발생 일시", style = MaterialTheme.typography.labelMedium)
                         Text(report.date, style = MaterialTheme.typography.bodyMedium)
@@ -330,7 +343,7 @@ fun ReportDetailDialog(
                             onExpandedChange = { expandedStatus = it }
                         ) {
                             OutlinedTextField(
-                                value = report.status.label,
+                                value = report.status?.label ?: "상태 미지정",
                                 onValueChange = {},
                                 readOnly = true,
                                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedStatus) },
@@ -363,7 +376,7 @@ fun ReportDetailDialog(
                             onExpandedChange = { expandedPriority = it }
                         ) {
                             OutlinedTextField(
-                                value = report.priority.label,
+                                value = report.priority?.label ?: "우선순위 미지정",
                                 onValueChange = {},
                                 readOnly = true,
                                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedPriority) },
@@ -389,62 +402,25 @@ fun ReportDetailDialog(
                     }
                 }
 
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("처리 메모 (내부용)", style = MaterialTheme.typography.labelMedium)
-                    OutlinedTextField(
-                        value = notes,
-                        onValueChange = { notes = it },
-                        placeholder = { Text("조사 진행 상황이나 처리 내역을 기록하세요") },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(100.dp),
-                        maxLines = 5
-                    )
-                }
-
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
-                    )
-                ) {
-                    Row(
-                        modifier = Modifier.padding(12.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Warning,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.error
-                        )
-                        Column {
-                            Text(
-                                text = "기밀 유지 안내",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.error
-                            )
-                            Text(
-                                text = "신고자의 익명성은 절대적으로 보호되어야 합니다. 조사 과정에서 신고자를 특정할 수 있는 정보가 유출되지 않도록 주의하세요.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onErrorContainer
-                            )
-                        }
-                    }
-                }
+                OutlinedTextField(
+                    value = notes,
+                    onValueChange = { notes = it },
+                    label = { Text("관리자 메모") },
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         },
         confirmButton = {
-            Button(
-                onClick = {
-                    onUpdateNotes(notes)
-                    onDismiss()
-                }
-            ) {
+            TextButton(onClick = {
+                onUpdateNotes(notes)
+                onDismiss()
+            }) {
                 Text("저장")
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("닫기")
+                Text("취소")
             }
         }
     )
