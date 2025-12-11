@@ -26,7 +26,9 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-
+        ndk {
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+        }
         // Make properties available as string resources for better security
         resValue("string", "PINATA_JWT", localProperties.getProperty("PINATA_JWT") ?: "")
         resValue("string", "DEV_PRIVATE_KEY", localProperties.getProperty("DEV_PRIVATE_KEY") ?: "")
