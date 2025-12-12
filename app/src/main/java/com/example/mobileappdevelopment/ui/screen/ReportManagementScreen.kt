@@ -1,40 +1,17 @@
 package com.example.mobileappdevelopment.ui.screen
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.mobileappdevelopment.data.Report
 import com.example.mobileappdevelopment.data.ReportPriority
@@ -42,35 +19,54 @@ import com.example.mobileappdevelopment.data.ReportStatus
 import com.example.mobileappdevelopment.veiwmodel.ReportViewModel
 
 @Composable
-fun ReportManagementScreen(viewModel: ReportViewModel) {
+fun ReportManagementScreen(
+    viewModel: ReportViewModel
+) {
     val reports by viewModel.reports.collectAsState()
     val filterStatus by viewModel.filterStatus.collectAsState()
+
     var selectedReport by remember { mutableStateOf<Report?>(null) }
 
-    val reportsByStatus = reports.groupBy { it.status }
-    val filteredReports = if (filterStatus == null) {
-        reports
-    } else {
-        reports.filter { it.status == filterStatus }
+    val filteredReports = remember(reports, filterStatus) {
+        if (filterStatus == null) {
+            reports
+        } else {
+            reports.filter { it.status == filterStatus }
+        }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        Card(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp)
-        ) {
+    val reportsByStatus = remember(reports) {
+        mapOf(
+            null to reports.size,
+            ReportStatus.PENDING to reports.count { it.status == ReportStatus.PENDING },
+            ReportStatus.INVESTIGATING to reports.count { it.status == ReportStatus.INVESTIGATING },
+            ReportStatus.RESOLVED to reports.count { it.status == ReportStatus.RESOLVED },
+            ReportStatus.CLOSED to reports.count { it.status == ReportStatus.CLOSED }
+        )
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Text(
+            text = "신고 현황",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier
+            .padding(4.dp)
+        )
+        Card {
+
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
+                modifier = Modifier.padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Text(
-                    text = "신고 현황",
-                    style = MaterialTheme.typography.titleLarge
-                )
+
                 Text(
                     text = "접수된 모든 익명 신고를 관리합니다",
                     style = MaterialTheme.typography.bodySmall,
@@ -83,13 +79,13 @@ fun ReportManagementScreen(viewModel: ReportViewModel) {
                 ) {
                     StatusCard(
                         label = "전체",
-                        count = reports.size,
+                        count = reportsByStatus[null] ?: 0,
                         onClick = { viewModel.setFilterStatus(null) },
                         modifier = Modifier.weight(1f)
                     )
                     StatusCard(
                         label = "접수",
-                        count = reportsByStatus[ReportStatus.PENDING]?.size ?: 0,
+                        count = reportsByStatus[ReportStatus.PENDING] ?: 0,
                         onClick = { viewModel.setFilterStatus(ReportStatus.PENDING) },
                         modifier = Modifier.weight(1f)
                     )
@@ -101,19 +97,19 @@ fun ReportManagementScreen(viewModel: ReportViewModel) {
                 ) {
                     StatusCard(
                         label = "조사중",
-                        count = reportsByStatus[ReportStatus.INVESTIGATING]?.size ?: 0,
+                        count = reportsByStatus[ReportStatus.INVESTIGATING] ?: 0,
                         onClick = { viewModel.setFilterStatus(ReportStatus.INVESTIGATING) },
                         modifier = Modifier.weight(1f)
                     )
                     StatusCard(
                         label = "해결",
-                        count = reportsByStatus[ReportStatus.RESOLVED]?.size ?: 0,
+                        count = reportsByStatus[ReportStatus.RESOLVED] ?: 0,
                         onClick = { viewModel.setFilterStatus(ReportStatus.RESOLVED) },
                         modifier = Modifier.weight(1f)
                     )
                     StatusCard(
                         label = "종료",
-                        count = reportsByStatus[ReportStatus.CLOSED]?.size ?: 0,
+                        count = reportsByStatus[ReportStatus.CLOSED] ?: 0,
                         onClick = { viewModel.setFilterStatus(ReportStatus.CLOSED) },
                         modifier = Modifier.weight(1f)
                     )
@@ -151,9 +147,9 @@ fun ReportManagementScreen(viewModel: ReportViewModel) {
         ReportDetailDialog(
             report = report,
             onDismiss = { selectedReport = null },
-            onUpdateStatus = { status -> viewModel.updateReportStatus(report.id.toString(), status) },
-            onUpdatePriority = { priority -> viewModel.updateReportPriority(report.id.toString(), priority) },
-            onUpdateNotes = { notes -> viewModel.updateReportNotes(report.id.toString(), notes) }
+            onUpdateStatus = { status -> viewModel.updateReportStatus(report.id, status) },
+            onUpdatePriority = { priority -> viewModel.updateReportPriority(report.id, priority) },
+            onUpdateNotes = { notes -> viewModel.updateReportNotes(report.id, notes) }
         )
     }
 }
@@ -203,7 +199,7 @@ fun ReportCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = report.title,
+                    text = report.title ?: "제목 없음",
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.weight(1f)
                 )
@@ -212,6 +208,7 @@ fun ReportCard(
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                // 수정 후
                 AssistChip(
                     onClick = {},
                     label = { Text(report.status?.label ?: "상태 미지정", style = MaterialTheme.typography.labelSmall) }
@@ -227,31 +224,34 @@ fun ReportCard(
             }
 
             Text(
-                text = report.description,
+                text = report.description ?: "내용 없음",
                 style = MaterialTheme.typography.bodySmall,
                 maxLines = 2,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Row(
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically // 아이콘과 텍스트 정렬을 위해 추가하면 좋습니다.
             ) {
-                if (report.department?.isNotBlank() == true) {
+                // 1. report.department가 null이 아니고 비어있지도 않을 때만 Text를 표시합니다.
+                if (!report.department.isNullOrBlank()) {
                     Text(
                         text = report.department,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Text("•", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(" • ", color = MaterialTheme.colorScheme.onSurfaceVariant) // 양쪽에 공백을 추가하면 더 보기 좋습니다.
                 }
                 Icon(
                     Icons.Default.DateRange,
-                    contentDescription = null,
+                    contentDescription = "Date",
                     modifier = Modifier.size(14.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                // 2. report.date가 null일 경우 빈 문자열("")을 표시하도록 합니다.
                 Text(
-                    text = report.date ?: "날짜 미지정",
+                    text = report.date ?: "",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -269,6 +269,7 @@ fun ReportDetailDialog(
     onUpdatePriority: (ReportPriority) -> Unit,
     onUpdateNotes: (String) -> Unit
 ) {
+    // 1. report.notes가 null일 경우를 대비해 빈 문자열로 초기화
     var notes by remember { mutableStateOf(report.notes ?: "") }
     var expandedStatus by remember { mutableStateOf(false) }
     var expandedPriority by remember { mutableStateOf(false) }
@@ -291,25 +292,29 @@ fun ReportDetailDialog(
 
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text("제목", style = MaterialTheme.typography.labelMedium)
-                    Text(report.title, style = MaterialTheme.typography.bodyMedium)
+                    // 2. report.title이 null일 경우를 대비
+                    Text(report.title ?: "제목 없음", style = MaterialTheme.typography.bodyMedium)
                 }
 
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text("신고 유형", style = MaterialTheme.typography.labelMedium)
                     AssistChip(
                         onClick = {},
+                        // 3. report.category가 null일 경우를 대비
                         label = { Text(report.category?.label ?: "유형 미지정") }
                     )
                 }
 
-                if (report.department?.isNotBlank() == true) {
+                // 4. isNullOrBlank()를 사용하여 department가 null이어도 안전하게 처리
+                if (!report.department.isNullOrBlank()) {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text("관련 부서", style = MaterialTheme.typography.labelMedium)
                         Text(report.department, style = MaterialTheme.typography.bodyMedium)
                     }
                 }
 
-                if (report.date?.isNotBlank() == true) {
+                // 5. isNullOrBlank()를 사용하여 date가 null이어도 안전하게 처리
+                if (!report.date.isNullOrBlank()) {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text("발생 일시", style = MaterialTheme.typography.labelMedium)
                         Text(report.date, style = MaterialTheme.typography.bodyMedium)
@@ -324,7 +329,8 @@ fun ReportDetailDialog(
                         )
                     ) {
                         Text(
-                            text = report.description,
+                            // 6. report.description이 null일 경우를 대비
+                            text = report.description ?: "상세 내용 없음",
                             modifier = Modifier.padding(12.dp),
                             style = MaterialTheme.typography.bodySmall
                         )
@@ -343,6 +349,7 @@ fun ReportDetailDialog(
                             onExpandedChange = { expandedStatus = it }
                         ) {
                             OutlinedTextField(
+                                // 7. report.status가 null일 경우를 대비
                                 value = report.status?.label ?: "상태 미지정",
                                 onValueChange = {},
                                 readOnly = true,
@@ -376,6 +383,7 @@ fun ReportDetailDialog(
                             onExpandedChange = { expandedPriority = it }
                         ) {
                             OutlinedTextField(
+                                // 8. report.priority가 null일 경우를 대비
                                 value = report.priority?.label ?: "우선순위 미지정",
                                 onValueChange = {},
                                 readOnly = true,
@@ -411,10 +419,12 @@ fun ReportDetailDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = {
-                onUpdateNotes(notes)
-                onDismiss()
-            }) {
+            Button(
+                onClick = {
+                    onUpdateNotes(notes)
+                    onDismiss()
+                }
+            ) {
                 Text("저장")
             }
         },
