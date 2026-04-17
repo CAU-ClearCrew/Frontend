@@ -15,14 +15,14 @@ import com.example.mobileappdevelopment.data.Report
 import com.example.mobileappdevelopment.data.ReportCategory
 import com.example.mobileappdevelopment.data.ReportPriority
 import com.example.mobileappdevelopment.data.ReportStatus
+import com.example.mobileappdevelopment.util.HexUtils
+import com.example.mobileappdevelopment.util.PoseidonHash
 import com.example.mobileappdevelopment.util.ZkKeyManager
 import com.github.kittinunf.fuel.Fuel
 import com.github.kittinunf.fuel.core.FileDataPart
 import com.github.kittinunf.fuel.core.Method
 import com.github.kittinunf.fuel.gson.responseObject
 import com.google.gson.Gson
-import com.loopring.poseidon.PoseidonHash
-import com.noirandroid.lib.Circuit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -30,8 +30,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.io.FileOutputStream
-import java.math.BigInteger
 import java.security.KeyFactory
 import java.security.spec.X509EncodedKeySpec
 import javax.crypto.Cipher
@@ -42,83 +40,25 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
 
     private val _filterStatus = MutableStateFlow<ReportStatus?>(null)
     val filterStatus: StateFlow<ReportStatus?> = _filterStatus.asStateFlow()
+    private val _submissionStatus = MutableStateFlow<String?>(null)
+    val submissionStatus: StateFlow<String?> = _submissionStatus.asStateFlow()
+    private val _isSubmitting = MutableStateFlow(false)
+    val isSubmitting: StateFlow<Boolean> = _isSubmitting.asStateFlow()
 
     private val gson = Gson()
     private val blockchainService = BlockchainService(application)
+    private val noirService = NoirService(application)
 
     init {
         loadReports()
     }
 
     private suspend fun poseidon1(input: String): String = withContext(Dispatchers.Default) {
-        val hasher: PoseidonHash = PoseidonHash.Digest.newInstance(PoseidonHash.DefaultParams)
-        (hasher as PoseidonHash.Digest).setStrict(false)
-        hasher.add(BigInteger(input, 16))
-        val hashResult = hasher.digest(false)
-        hashResult[0].toString(16)
+        PoseidonHash.poseidon1(input)
     }
 
     private suspend fun poseidon2(input1: String, input2: String): String = withContext(Dispatchers.Default) {
-        val hasher: PoseidonHash = PoseidonHash.Digest.newInstance(PoseidonHash.DefaultParams)
-        (hasher as PoseidonHash.Digest).setStrict(false)
-        hasher.add(BigInteger(input1, 16))
-        hasher.add(BigInteger(input2, 16))
-        val hashResult = hasher.digest(false)
-        hashResult[0].toString(16)
-    }
-
-    private fun loadCircuit(): Circuit {
-        val application = getApplication<Application>()
-        val json = application.assets.open("zkClearCrew.json")
-            .bufferedReader()
-            .use { it.readText() }
-
-        val circuit = Circuit.fromJsonManifest(json)
-
-        // Copy SRS from assets to internal storage if it doesn't exist
-        val srsFile = File(application.filesDir, "srs")
-        if (!srsFile.exists()) {
-            application.assets.open("srs").use { input ->
-                FileOutputStream(srsFile).use { output ->
-                    input.copyTo(output)
-                }
-            }
-        }
-
-        circuit.setupSrs(srsFile.path)
-        return circuit
-    }
-
-    private fun generateProof(
-        customNullifier: String,
-        secret: String,
-        itemKey: String,
-        itemNextIdx: String,
-        itemNextKey: String,
-        itemValue: String,
-        pathElements: List<String>,
-        pathIndices: List<String>,
-        activeBits: List<String>,
-        root: String,
-        nullifierHash: String
-    ): String {
-        val circuit = loadCircuit()
-
-        val inputs = hashMapOf<String, Any>().apply {
-            this["custom_nullifier"] = customNullifier
-            this["secret"] = secret
-            this["item_key"] = itemKey
-            this["item_nextIdx"] = itemNextIdx
-            this["item_nextKey"] = itemNextKey
-            this["item_value"] = itemValue
-            this["path_elements"] = pathElements
-            this["path_indices"] = pathIndices
-            this["active_bits"] = activeBits
-            this["root"] = root
-            this["nullifier_hash"] = nullifierHash
-        }
-
-        return circuit.prove(inputs)
+        PoseidonHash.poseidon2(input1, input2)
     }
 
     fun setFilterStatus(status: ReportStatus?) {
@@ -141,7 +81,6 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
         tempFile.writeBytes(data)
         
         val pinataJwt = getApplication<Application>().getString(R.string.PINATA_JWT)
-        Log.d("PinataJWTCheck", "JWT: $pinataJwt")
 
         val base = "https://api.pinata.cloud"
         val response = Fuel.upload(base + "/pinning/pinFileToIPFS", Method.POST)
@@ -151,6 +90,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
 
         tempFile.delete()
         response.third.get().ipfsHash
+            ?: throw IllegalStateException("Pinata response did not include an IPFS CID.")
     }
 
     private fun loadReports() {
@@ -174,11 +114,14 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
         date: String
     ) {
         viewModelScope.launch {
+            _isSubmitting.value = true
+            _submissionStatus.value = null
             try {
-                val customNullifier = ZkKeyManager.getCustomNullifier(getApplication()) ?: return@launch
-                val secret = ZkKeyManager.getSecret(getApplication()) ?: return@launch
+                val customNullifier = ZkKeyManager.getCustomNullifier(getApplication())
+                    ?: throw IllegalStateException("Register your Anonymous ID before submitting a report.")
+                val secret = ZkKeyManager.getSecret(getApplication())
+                    ?: throw IllegalStateException("Register your Anonymous ID before submitting a report.")
 
-                // 1. Create JSON from report data
                 val reportJson = gson.toJson(mapOf(
                     "category" to category.name,
                     "title" to title,
@@ -187,58 +130,74 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                     "date" to date
                 ))
 
-                // 2. Get public key from the server
                 val publicKeyResponse = RetrofitClient.apiService.getPublicKey()
                 if (!publicKeyResponse.isSuccessful) {
-                    // Handle error
-                    return@launch
+                    throw IllegalStateException("Failed to fetch the server public key.")
                 }
                 val publicKey = publicKeyResponse.body()!!.publicKey
 
-                // 3. Encrypt data
                 val encryptedData = encryptData(reportJson, publicKey)
-
-                // 4. Upload to IPFS
                 val cid = uploadToIpfs(encryptedData)
 
-                // 5. Get Merkle Tree info (Circuit Inputs)
                 val circuitInputsResponse = RetrofitClient.apiService.getMerkleTreeInfo()
                 if (!circuitInputsResponse.isSuccessful) {
-                    // Handle error
-                    return@launch
+                    throw IllegalStateException("Failed to fetch Merkle proof inputs. Register your Anonymous ID first.")
                 }
                 val circuitInputs = circuitInputsResponse.body()!!
 
-                // 6. Calculate hashes required for the proof
                 val nullifierHash = poseidon1(customNullifier)
                 val itemValue = poseidon2(customNullifier, secret)
+                val proofRequest = ReportProofInputFactory.create(
+                    customNullifier = customNullifier,
+                    secret = secret,
+                    circuitInputs = circuitInputs,
+                    itemValue = itemValue,
+                    nullifierHash = nullifierHash
+                )
+                ReportProofInputFactory.validateAgainstTreeInfo(proofRequest, circuitInputs)
 
-                // 7. Generate ZK Proof using real data from the API
-                val proofString = generateProof(
-                    customNullifier,
-                    secret,
-                    circuitInputs.item_key,
-                    circuitInputs.item_nextIdx,
-                    circuitInputs.item_nextKey,
-                    itemValue, // Use calculated itemValue
-                    circuitInputs.path_elements,
-                    circuitInputs.path_indices,
-                    circuitInputs.active_bits,
-                    circuitInputs.root,
-                    nullifierHash
+                val proofString = noirService.generateProof(
+                    proofRequest.customNullifier,
+                    proofRequest.secret,
+                    proofRequest.itemKey,
+                    proofRequest.itemNextIdx,
+                    proofRequest.itemNextKey,
+                    proofRequest.itemValue,
+                    proofRequest.pathElements,
+                    proofRequest.pathIndices,
+                    proofRequest.activeBits,
+                    proofRequest.root,
+                    proofRequest.nullifierHash
                 )
 
-                // 8. Submit to the smart contract
-                val proofBytes = proofString.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
-                val rootBytes = circuitInputs.root.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
-                val txHash = blockchainService.submitWhistleblow(proofBytes, cid, rootBytes)
+                val proofBytes = HexUtils.toByteArray(proofString)
+                val rootBytes = HexUtils.toByteArray(circuitInputs.root)
+                val nullifierHashBytes = HexUtils.toByteArray(proofRequest.nullifierHash)
+                val onChainRoot = blockchainService.getCurrentMerkleRoot()
+                val proofHex = "0x" + proofBytes.joinToString("") { "%02x".format(it) }
+                logProofHexChunks(proofHex)
+                Log.d("ReportViewModel", "Backend root: ${circuitInputs.root}")
+                Log.d("ReportViewModel", "On-chain root: $onChainRoot")
+                Log.d("ReportViewModel", "Nullifier hash: ${proofRequest.nullifierHash}")
+                val txHash = blockchainService.submitWhistleblow(
+                    proofBytes,
+                    cid,
+                    rootBytes,
+                    nullifierHashBytes
+                )
 
                 if (txHash != null) {
                     loadReports()
+                    _submissionStatus.value = "Anonymous report submitted successfully."
+                } else {
+                    _submissionStatus.value = "The proof was generated, but blockchain submission failed."
                 }
 
             } catch (t: Throwable) {
                 Log.e("ReportViewModel", "Failed to submit report", t)
+                _submissionStatus.value = t.message ?: "Failed to submit report."
+            } finally {
+                _isSubmitting.value = false
             }
         }
     }
@@ -284,6 +243,66 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
             }
         }
     }
+
+    private fun logProofHexChunks(proofHex: String) {
+        val chunkSize = 1800
+        val parts = proofHex.chunked(chunkSize)
+        parts.forEachIndexed { index, part ->
+            Log.d("ReportViewModel", "Proof hex [${index + 1}/${parts.size}]: $part")
+        }
+    }
 }
 
-data class IpfsResponse(val ipfsHash: String)
+data class IpfsResponse(
+    @com.google.gson.annotations.SerializedName("IpfsHash")
+    val ipfsHash: String?
+)
+
+internal data class NoirProofRequest(
+    val customNullifier: String,
+    val secret: String,
+    val itemKey: String,
+    val itemNextIdx: String,
+    val itemNextKey: String,
+    val itemValue: String,
+    val pathElements: List<String>,
+    val pathIndices: List<String>,
+    val activeBits: List<String>,
+    val root: String,
+    val nullifierHash: String
+)
+
+internal object ReportProofInputFactory {
+    fun create(
+        customNullifier: String,
+        secret: String,
+        circuitInputs: com.example.mobileappdevelopment.api.CircuitInputsResponse,
+        itemValue: String,
+        nullifierHash: String
+    ): NoirProofRequest {
+        return NoirProofRequest(
+            customNullifier = customNullifier,
+            secret = secret,
+            itemKey = circuitInputs.leaf_item.key,
+            itemNextIdx = circuitInputs.leaf_item.nextIdx.toString(),
+            itemNextKey = circuitInputs.leaf_item.nextKey,
+            itemValue = itemValue,
+            pathElements = circuitInputs.path_elements,
+            pathIndices = circuitInputs.path_indices.map { it.toString() },
+            activeBits = circuitInputs.active_bits.map { it.toString() },
+            root = circuitInputs.root,
+            nullifierHash = nullifierHash
+        )
+    }
+
+    fun validateAgainstTreeInfo(
+        proofRequest: NoirProofRequest,
+        circuitInputs: com.example.mobileappdevelopment.api.CircuitInputsResponse
+    ) {
+        val expectedLeafValue = HexUtils.requireHex(circuitInputs.leaf_item.value, "leaf_item.value")
+        val actualLeafValue = HexUtils.requireHex(proofRequest.itemValue, "item_value")
+        require(expectedLeafValue == actualLeafValue) {
+            "Local Poseidon output does not match the registered Merkle leaf value."
+        }
+    }
+}

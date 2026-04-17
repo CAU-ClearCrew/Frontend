@@ -14,6 +14,7 @@ fun ZkSettingsScreen(viewModel: ZkViewModel = viewModel()) {
     var customNullifier by remember { mutableStateOf("") }
     var secret by remember { mutableStateOf("") }
     val registrationStatus by viewModel.registrationStatus.collectAsState()
+    val isRegistering by viewModel.isRegistering.collectAsState()
 
     Column(
         modifier = Modifier
@@ -50,10 +51,10 @@ fun ZkSettingsScreen(viewModel: ZkViewModel = viewModel()) {
 
         Button(
             onClick = { viewModel.registerZkKeys(customNullifier, secret) },
-            enabled = customNullifier.isNotBlank() && secret.isNotBlank(),
+            enabled = customNullifier.isNotBlank() && secret.isNotBlank() && !isRegistering,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Register")
+            Text(if (isRegistering) "Registering..." else "Register")
         }
 
         registrationStatus?.let {

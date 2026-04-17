@@ -148,14 +148,17 @@ data class MerkleRegisterResponse(
     val result: Any?
 )
 
-// ZK Circuit Inputs Response
 data class CircuitInputsResponse(
-    val item_key: String,
-    val item_nextIdx: String,
-    val item_nextKey: String,
-    val item_value: String,
+    val root: String,
     val path_elements: List<String>,
-    val path_indices: List<String>,
-    val active_bits: List<String>,
-    val root: String
+    val path_indices: List<Int>,
+    val active_bits: List<Int>,
+    val leaf_item: LeafItemResponse
+)
+
+data class LeafItemResponse(
+    val key: String,
+    val value: String,
+    val nextKey: String,
+    val nextIdx: Int
 )

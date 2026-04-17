@@ -5,6 +5,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -42,6 +43,8 @@ fun MainScreen(
 ) {
     val navController = rememberNavController()
     val employeeViewModel: EmployeeViewModel = viewModel()
+    val submissionStatus by reportViewModel.submissionStatus.collectAsState()
+    val isSubmitting by reportViewModel.isSubmitting.collectAsState()
 
     val screens = if (currentUser.role == UserRole.ADMIN) {
         listOf(
@@ -108,6 +111,8 @@ fun MainScreen(
             composable(Screen.AnonymousReport.route) {
                 AnonymousReportScreen(
                     currentUser = currentUser,
+                    isSubmitting = isSubmitting,
+                    submissionStatus = submissionStatus,
                     onSubmit = { category, title, description, department, date ->
                         reportViewModel.submitReport(category, title, description, department, date)
                     }

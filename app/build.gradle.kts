@@ -94,8 +94,8 @@ dependencies {
     // Gson for JSON serialization
     implementation("com.google.code.gson:gson:2.10.1")
 
-    // Noir Android
-    implementation("com.github.madztheo:noir_android:1.0.0-beta.14-3")
+    // Match the circuit manifest noir_version (1.0.0-beta.8).
+    implementation("com.github.madztheo:noir_android:1.0.0-beta.8-2")
 
     // Web3j for Ethereum interaction
     implementation("org.web3j:core:4.10.3")

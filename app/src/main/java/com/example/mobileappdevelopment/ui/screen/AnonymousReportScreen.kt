@@ -12,26 +12,25 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.mobileappdevelopment.data.ReportCategory
 import com.example.mobileappdevelopment.data.User
-import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AnonymousReportScreen(
     currentUser: User,
+    isSubmitting: Boolean,
+    submissionStatus: String?,
     onSubmit: (ReportCategory, String, String, String, String) -> Unit
 ) {
-    var submitted by remember { mutableStateOf(false) }
     var category by remember { mutableStateOf<ReportCategory?>(null) }
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var department by remember { mutableStateOf("") }
     var date by remember { mutableStateOf("") }
     var expandedCategory by remember { mutableStateOf(false) }
+    val submittedSuccessfully = submissionStatus?.contains("success", ignoreCase = true) == true
 
-    LaunchedEffect(submitted) {
-        if (submitted) {
-            delay(3000)
-            submitted = false
+    LaunchedEffect(submittedSuccessfully) {
+        if (submittedSuccessfully) {
             category = null
             title = ""
             description = ""
@@ -97,7 +96,7 @@ fun AnonymousReportScreen(
             }
         }
 
-        if (submitted) {
+        if (submittedSuccessfully) {
             Card(
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer
@@ -232,13 +231,20 @@ fun AnonymousReportScreen(
                         onClick = {
                             category?.let { cat ->
                                 onSubmit(cat, title, description, department, date)
-                                submitted = true
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),
-                        enabled = category != null && title.isNotBlank() && description.isNotBlank()
+                        enabled = category != null && title.isNotBlank() && description.isNotBlank() && !isSubmitting
                     ) {
-                        Text("Submit Anonymously")
+                        Text(if (isSubmitting) "Submitting..." else "Submit Anonymously")
+                    }
+
+                    submissionStatus?.let {
+                        Text(
+                            text = it,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
                     }
                 }
             }
